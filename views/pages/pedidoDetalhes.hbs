@@ -1,0 +1,45 @@
+<section class="page">
+  <h2>{{titulo}}</h2>
+
+  <p>
+    <strong>Status:</strong> {{pedido.status}}
+  </p>
+
+  <p>
+    <strong>Total:</strong> R$ {{pedido.total}}
+  </p>
+
+  <p>
+    <strong>Data:</strong> {{pedido.criado_em}}
+  </p>
+
+  <h3>Itens do pedido</h3>
+
+  <table class="tabela-usuarios">
+    <thead>
+      <tr>
+        <th>Produto</th>
+        <th>Quantidade</th>
+        <th>Valor unitário</th>
+        <th>Subtotal</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {{#each itens}}
+        <tr>
+          <td>{{this.nome_produto}}</td>
+          <td>{{this.quantidade}}</td>
+          <td>R$ {{this.valor_unitario}}</td>
+          <td>R$ {{this.subtotal}}</td>
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <br>
+
+  <a href="/minha-conta/pedidos" class="btn btn-secondary">
+    Voltar
+  </a>
+</section>

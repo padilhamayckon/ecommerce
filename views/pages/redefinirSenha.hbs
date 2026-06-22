@@ -1,0 +1,45 @@
+<section class="page login-page">
+  <h2>{{titulo}}</h2>
+
+  {{#if erro}}
+    <p class="erro">{{erro}}</p>
+  {{/if}}
+
+  {{#if tokenInvalido}}
+    <a href="/recuperar-senha" class="btn btn-novo">
+      Solicitar novo link
+    </a>
+  {{else}}
+
+    <form action="/redefinir-senha/{{token}}" method="POST" class="form-usuario">
+      <label for="senha">Nova senha</label>
+      <input 
+        type="password" 
+        id="senha" 
+        name="senha" 
+        minlength="6"
+        required
+      >
+
+      <label for="confirmar_senha">Confirmar nova senha</label>
+      <input 
+        type="password" 
+        id="confirmar_senha" 
+        name="confirmar_senha" 
+        minlength="6"
+        required
+      >
+
+      <div class="registro-acoes">
+        <button type="submit" class="btn btn-novo">
+          Redefinir senha
+        </button>
+
+        <a href="/login" class="btn btn-cancelar">
+          Cancelar
+        </a>
+      </div>
+    </form>
+
+  {{/if}}
+</section>

@@ -1,0 +1,48 @@
+<section class="page home-page">
+  <div class="home-hero">
+    <h2>Bem-vindo à Minha Loja</h2>
+
+    <p>
+      Confira nosso catálogo de produtos, escolha os itens desejados e finalize sua compra com segurança.
+    </p>
+
+    <div class="acoes">
+      <a href="/catalogo" class="btn btn-novo">
+        Ver produtos
+      </a>
+
+      {{#if usuarioLogado}}
+        <a href="/carrinho" class="btn btn-secondary">
+          Ir para o carrinho
+        </a>
+      {{else}}
+        <a href="/login" class="btn btn-secondary">
+          Entrar na conta
+        </a>
+      {{/if}}
+    </div>
+  </div>
+
+  <div class="home-info">
+    <div class="home-info-card">
+      <h3>Catálogo público</h3>
+      <p>
+        Navegue pelos produtos disponíveis sem precisar estar logado.
+      </p>
+    </div>
+
+    <div class="home-info-card">
+      <h3>Carrinho simples</h3>
+      <p>
+        Adicione produtos ao carrinho e revise os itens antes de finalizar.
+      </p>
+    </div>
+
+    <div class="home-info-card">
+      <h3>Compra com conta</h3>
+      <p>
+        Para finalizar a compra, basta entrar ou criar uma conta de cliente.
+      </p>
+    </div>
+  </div>
+</section>

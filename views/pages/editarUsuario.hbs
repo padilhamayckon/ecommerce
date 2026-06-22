@@ -1,0 +1,69 @@
+<h1 class="mb-4">Editar Usuário</h1>
+
+{{#if erro}}
+  <div class="alert alert-danger">
+    {{erro}}
+  </div>
+{{/if}}
+
+<form action="/usuarios/editar/{{usuario.id}}" method="POST" class="form-usuario">
+  <div class="mb-3">
+    <label class="form-label">Nome</label>
+    <input
+      type="text"
+      name="nome"
+      class="form-control"
+      value="{{usuario.nome}}"
+      required
+    >
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">E-mail</label>
+    <input
+      type="email"
+      name="email"
+      class="form-control"
+      value="{{usuario.email}}"
+      required
+    >
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Nova senha</label>
+    <input
+      type="password"
+      name="senha"
+      class="form-control"
+      placeholder="Deixe em branco para manter a senha atual"
+    >
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Tipo de usuário</label>
+
+    <select name="tipo_usuario" class="form-select" required>
+      <option value="1" {{#ifCond usuario.tipo_usuario 1}}selected{{/ifCond}}>
+        Administrador
+      </option>
+
+      <option value="2" {{#ifCond usuario.tipo_usuario 2}}selected{{/ifCond}}>
+        Colaborador
+      </option>
+
+      <option value="3" {{#ifCond usuario.tipo_usuario 3}}selected{{/ifCond}}>
+        Cliente
+      </option>
+    </select>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-success">
+      Atualizar
+    </button>
+
+    <a href="/usuarios" class="btn btn-secondary">
+      Cancelar
+    </a>
+  </div>
+</form>

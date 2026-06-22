@@ -1,0 +1,36 @@
+.header {
+  background: var(--color-primary-dark);
+  color: var(--color-white);
+  padding: 24px;
+  text-align: center;
+}
+
+.header h1 {
+  margin: 0 0 15px;
+  font-size: 34px;
+}
+
+.menu {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.menu a {
+  color: var(--color-white);
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.menu a:hover {
+  color: var(--color-secondary);
+  text-decoration: none;
+}
+
+.menu-usuario {
+  color: var(--color-white);
+  font-weight: bold;
+  opacity: 0.9;
+}

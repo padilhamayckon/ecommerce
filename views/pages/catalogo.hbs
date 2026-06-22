@@ -1,0 +1,75 @@
+<section class="page">
+  <h2>{{titulo}}</h2>
+
+  <p>
+    Conheça alguns produtos disponíveis em nosso catálogo.
+  </p>
+
+  {{#if mensagemErro}}
+    <div class="alert alert-warning">
+      {{mensagemErro}}
+    </div>
+  {{/if}}
+
+  {{#if mensagemSucesso}}
+    <div class="alert alert-success">
+      {{mensagemSucesso}}
+    </div>
+  {{/if}}
+
+  <div class="catalogo-topo">
+    <a href="/carrinho" class="btn btn-carrinho">
+  Ver carrinho {{#if carrinhoQuantidade}}({{carrinhoQuantidade}}){{/if}}
+</a>
+  </div>
+
+  {{#if produtos.length}}
+
+    <div class="produtos-grid">
+
+      {{#each produtos}}
+
+        <a 
+          href="/catalogo/produto/{{this.id}}" 
+          class="produto-card produto-card-link"
+        >
+
+          {{#if this.imagem}}
+            <img 
+              src="/{{this.imagem}}" 
+              alt="{{this.nome}}" 
+              class="produto-img"
+            >
+          {{else}}
+            <div class="produto-img produto-sem-img">
+              Sem imagem
+            </div>
+          {{/if}}
+
+          <div class="produto-card-conteudo">
+            <h3>{{this.nome}}</h3>
+
+            {{#if this.disponivel}}
+              <strong>R$ {{this.valor}}</strong>
+            {{else}}
+              <strong class="produto-indisponivel">
+                Indisponível
+              </strong>
+            {{/if}}
+          </div>
+
+        </a>
+
+      {{/each}}
+
+    </div>
+
+  {{else}}
+
+    <div class="alert alert-info">
+      Nenhum produto disponível no momento.
+    </div>
+
+  {{/if}}
+
+</section>

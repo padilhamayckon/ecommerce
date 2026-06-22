@@ -1,0 +1,38 @@
+<header class="header">
+  <h1>Minha Loja</h1>
+
+  <nav class="menu">
+    <a href="/">Home</a>
+    <a href="/catalogo">Produtos</a>
+    <a href="/carrinho">Carrinho</a>
+
+    {{#if usuarioLogado}}
+
+    {{#if podeGerenciarProdutos}}
+    <a href="/produtos/admin">Gerenciar produtos</a>
+    {{/if}}
+
+    {{#if isAdmin}}
+    <a href="/usuarios">Usuários</a>
+    {{/if}}
+    
+    {{#if isCliente}}
+    <a href="/minha-conta">Minha conta</a>
+    {{/if}}
+
+    <span class="menu-usuario">
+      Olá, {{usuarioLogado.nome}}
+    </span>
+
+    <a href="/sair">Sair</a>
+
+
+
+    {{else}}
+
+    <a href="/login">Login</a>
+
+    {{/if}}
+  </nav>
+
+</header>

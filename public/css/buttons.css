@@ -1,0 +1,89 @@
+.btn,
+.form-contato button {
+  display: inline-block;
+  padding: 10px 16px;
+  background: var(--color-primary-dark);
+  color: var(--color-white);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  text-align: center;
+}
+
+.btn:hover,
+.form-contato button:hover {
+  background: #8f735f;
+  color: var(--color-white);
+}
+
+.btn-novo,
+.btn-info {
+  background: var(--color-primary-dark);
+  color: var(--color-white);
+}
+
+.btn-novo:hover,
+.btn-info:hover {
+  background: #8f735f;
+  color: var(--color-white);
+}
+
+.btn-success,
+.btn-editar,
+.btn-cadastro {
+  background: var(--color-secondary);
+  color: #2b241f;
+}
+
+.btn-success:hover,
+.btn-editar:hover,
+.btn-cadastro:hover {
+  background: #a5aa7c;
+  color: #2b241f;
+}
+
+.btn-secondary,
+.btn-cancelar {
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+
+.btn-secondary:hover,
+.btn-cancelar:hover {
+  background: var(--color-primary-dark);
+  color: var(--color-white);
+}
+
+.btn-danger,
+.btn-sair {
+  background: var(--color-danger);
+  color: var(--color-white);
+}
+
+.btn-danger:hover,
+.btn-sair:hover {
+  background: var(--color-danger-dark);
+  color: var(--color-white);
+}
+
+.btn:disabled,
+button:disabled {
+  background: #c8b9a4;
+  color: #6f6257;
+  cursor: not-allowed;
+}
+.btn-carrinho,
+.btn-outline-primary {
+  background: var(--color-primary-dark);
+  color: var(--color-white);
+  border: 1px solid var(--color-primary-dark);
+}
+
+.btn-carrinho:hover,
+.btn-outline-primary:hover {
+  background: var(--color-primary);
+  color: var(--color-white);
+  border-color: var(--color-primary);
+}

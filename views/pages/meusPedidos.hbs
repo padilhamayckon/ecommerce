@@ -1,0 +1,43 @@
+<section class="page">
+  <h2>{{titulo}}</h2>
+
+  {{#if pedidos.length}}
+    <table class="tabela-usuarios">
+      <thead>
+        <tr>
+          <th>Pedido</th>
+          <th>Status</th>
+          <th>Total</th>
+          <th>Data</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {{#each pedidos}}
+          <tr>
+            <td>#{{this.id}}</td>
+            <td>{{this.status}}</td>
+            <td>R$ {{this.total}}</td>
+            <td>{{this.criado_em}}</td>
+            <td>
+              <a href="/minha-conta/pedidos/{{this.id}}" class="btn btn-info">
+                Ver detalhes
+              </a>
+            </td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  {{else}}
+    <div class="alert alert-info">
+      Você ainda não possui compras finalizadas.
+    </div>
+  {{/if}}
+
+  <br>
+
+  <a href="/minha-conta" class="btn btn-secondary">
+    Voltar
+  </a>
+</section>

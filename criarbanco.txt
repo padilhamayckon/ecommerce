@@ -1,0 +1,112 @@
+-- Criar banco
+CREATE DATABASE IF NOT EXISTS loja_db
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_0900_ai_ci;
+
+USE loja_db;
+
+-- =====================================================
+-- TABELA: usuarios
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS usuarios (
+    id INT NOT NULL AUTO_INCREMENT,
+    nome VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    cpf_cnpj VARCHAR(20) DEFAULT NULL,
+    senha VARCHAR(255) NOT NULL,
+    tipo_usuario INT NOT NULL DEFAULT 3,
+    criado_em TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    UNIQUE KEY uk_usuarios_email (email),
+    UNIQUE KEY uk_usuarios_cpf_cnpj (cpf_cnpj)
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_0900_ai_ci;
+
+-- =====================================================
+-- TABELA: produtos
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS produtos (
+    id INT NOT NULL AUTO_INCREMENT,
+    nome VARCHAR(150) NOT NULL,
+    quantidade INT NOT NULL,
+    descricao TEXT,
+    valor DECIMAL(10,2) NOT NULL,
+    imagem VARCHAR(255) DEFAULT NULL,
+    ativo TINYINT(1) NOT NULL DEFAULT 1,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    KEY idx_produtos_ativo_id (ativo, id)
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_0900_ai_ci;
+
+-- =====================================================
+-- TABELA: recuperacao_senhas
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS recuperacao_senhas (
+    id INT NOT NULL AUTO_INCREMENT,
+    usuario_id INT NOT NULL,
+    token_hash VARCHAR(255) NOT NULL,
+    usado TINYINT(1) NOT NULL DEFAULT 0,
+    expira_em DATETIME NOT NULL,
+    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    KEY idx_token_hash (token_hash),
+    KEY idx_usuario_usado (usuario_id, usado),
+
+    CONSTRAINT fk_recuperacao_usuario
+        FOREIGN KEY (usuario_id)
+        REFERENCES usuarios(id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_0900_ai_ci;
+
+-- =====================================================
+-- TABELA: carrinho_reservas
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS carrinho_reservas (
+    id INT NOT NULL AUTO_INCREMENT,
+    produto_id INT NOT NULL,
+    session_id VARCHAR(255) NOT NULL,
+    quantidade INT NOT NULL,
+    status ENUM('ativa','cancelada','expirada','finalizada')
+        NOT NULL DEFAULT 'ativa',
+    expiraEm DATETIME NOT NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    KEY idx_reserva_produto_status_expira
+        (produto_id, status, expiraEm),
+
+    KEY idx_reserva_session_status
+        (session_id, status),
+
+    KEY idx_reservas_session_status_expira
+        (session_id, status, expiraEm),
+
+    KEY idx_reservas_produto_status_expira
+        (produto_id, status, expiraEm),
+
+    CONSTRAINT fk_carrinho_reservas_produto
+        FOREIGN KEY (produto_id)
+        REFERENCES produtos(id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_0900_ai_ci;

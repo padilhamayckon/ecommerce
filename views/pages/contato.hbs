@@ -1,0 +1,27 @@
+<section class="page">
+  <h2>{{titulo}}</h2>
+
+  {{#if sucesso}}
+    <p class="sucesso">{{sucesso}}</p>
+  {{/if}}
+
+  {{#if erro}}
+    <p class="erro">{{erro}}</p>
+  {{/if}}
+
+ <form action="/contato" method="POST" class="form-contato">
+  <label>Nome</label>
+  <input type="text" name="nome" required>
+
+  <label>E-mail</label>
+  <input type="email" name="email" required>
+
+  <label>Telefone</label>
+  <input type="text" name="telefone">
+
+  <label>Mensagem</label>
+  <textarea name="mensagem" rows="5" required></textarea>
+
+  <button type="submit">Enviar</button>
+</form>
+</section>

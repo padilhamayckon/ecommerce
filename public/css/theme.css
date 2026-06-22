@@ -1,0 +1,32 @@
+:root {
+  /* Paleta principal */
+  --color-primary-dark: #A98B76;
+  --color-primary: #BFA28C;
+  --color-secondary: #BABF94;
+  --color-accent: #A98B76;
+
+  /* Fundo e superfícies */
+  --color-bg: #F3E4C9;
+  --color-surface: #fff8ec;
+  --color-surface-soft: #f8edd8;
+  --color-border: #d7c4aa;
+
+  /* Texto */
+  --color-text: #2b241f;
+  --color-muted: #6f6257;
+
+  /* Neutros */
+  --color-white: #ffffff;
+  --color-black: #111111;
+
+  /* Status */
+  --color-danger: #b94a48;
+  --color-danger-dark: #8f2f2d;
+
+  /* Layout */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+
+  --shadow-card: 0 8px 20px rgba(80, 55, 35, 0.12);
+}

@@ -1,0 +1,56 @@
+.auth-page {
+  min-height: 100vh;
+  background: var(--color-bg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.auth-container {
+  width: min(420px, calc(100% - 32px));
+  background: var(--color-surface);
+  padding: 32px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.login-page,
+.registro-page {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.login-cadastro {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.login-cadastro p {
+  margin-bottom: 12px;
+}
+
+.registro-card {
+  width: 100%;
+}
+
+.registro-card h2 {
+  margin-bottom: 8px;
+  color: var(--color-primary-dark);
+}
+
+.registro-descricao {
+  margin-bottom: 24px;
+  color: var(--color-muted);
+}
+
+.registro-acoes {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.registro-acoes .btn {
+  min-width: 120px;
+}

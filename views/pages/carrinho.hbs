@@ -1,0 +1,91 @@
+<section class="page carrinho-page">
+  <h2>{{titulo}}</h2>
+
+  {{#if erro}}
+    <div class="alert alert-warning">
+      {{erro}}
+    </div>
+  {{/if}}
+
+  {{#if carrinho.length}}
+
+    <div class="carrinho-lista">
+
+      {{#each carrinho}}
+        <div class="carrinho-item">
+
+          <div class="carrinho-img-box">
+            {{#if this.imagem}}
+              <img 
+                src="/{{this.imagem}}" 
+                alt="{{this.nome}}" 
+                class="carrinho-img"
+              >
+            {{else}}
+              <div class="carrinho-sem-img">
+                Sem imagem
+              </div>
+            {{/if}}
+          </div>
+
+          <div class="carrinho-info">
+            <h3>{{this.nome}}</h3>
+
+            <p>
+              <strong>Valor:</strong>
+              R$ {{this.valor}}
+            </p>
+
+            <p>
+              <strong>Quantidade:</strong>
+              {{this.quantidade}}
+            </p>
+          </div>
+
+          <div class="carrinho-acoes">
+            <form action="/carrinho/remover/{{this.id}}" method="POST">
+              <button type="submit" class="btn btn-danger">
+                Remover
+              </button>
+            </form>
+          </div>
+
+        </div>
+      {{/each}}
+
+    </div>
+
+    <div class="carrinho-resumo">
+      <h3>Total: R$ {{total}}</h3>
+
+      <div class="carrinho-resumo-acoes">
+
+        <form action="/carrinho/finalizar" method="POST">
+          <button type="submit" class="btn btn-success">
+            Finalizar compra
+          </button>
+        </form>
+
+        <form action="/carrinho/limpar" method="POST">
+          <button type="submit" class="btn btn-secondary">
+            Limpar carrinho
+          </button>
+        </form>
+
+      </div>
+    </div>
+
+  {{else}}
+
+    <div class="alert alert-info">
+      Seu carrinho está vazio.
+    </div>
+
+  {{/if}}
+
+  <div class="carrinho-voltar">
+    <a href="/catalogo">
+      Continuar comprando
+    </a>
+  </div>
+</section>

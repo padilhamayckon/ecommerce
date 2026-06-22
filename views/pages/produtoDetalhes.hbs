@@ -1,0 +1,90 @@
+<section class="page produto-detalhes-page">
+
+  <a href="/catalogo" class="link-voltar">
+    Voltar ao catálogo
+  </a>
+
+  <div class="produto-detalhes-card">
+
+    <div class="produto-detalhes-imagem-box">
+      {{#if produto.imagem}}
+        <img 
+          src="/{{produto.imagem}}" 
+          alt="{{produto.nome}}" 
+          class="produto-detalhes-img"
+        >
+      {{else}}
+        <div class="produto-detalhes-sem-img">
+          Sem imagem
+        </div>
+      {{/if}}
+    </div>
+
+    <div class="produto-detalhes-info">
+
+      <h2>{{produto.nome}}</h2>
+
+      <p class="produto-detalhes-descricao">
+        {{produto.descricao}}
+      </p>
+
+      {{#if produto.disponivel}}
+
+        <p>
+          <strong>Valor:</strong>
+          R$ {{produto.valor}}
+        </p>
+
+        <p>
+          <strong>Quantidade disponível em estoque:</strong>
+          {{produto.quantidade}}
+        </p>
+
+        <form 
+          action="/carrinho/adicionar/{{produto.id}}" 
+          method="POST" 
+          class="produto-detalhes-form"
+        >
+
+          <label for="quantidade">
+            Quantidade:
+          </label>
+
+          <input 
+            type="number" 
+            name="quantidade" 
+            id="quantidade" 
+            value="1" 
+            min="1"
+            max="{{produto.quantidade}}"
+            required
+          >
+
+          <button type="submit" class="btn btn-success">
+            Adicionar ao carrinho
+          </button>
+
+        </form>
+
+      {{else}}
+
+        <p>
+          <strong>Quantidade disponível em estoque:</strong>
+          0
+        </p>
+
+        <div class="alert alert-warning">
+          Produto indisponível no momento.
+        </div>
+
+        <button type="button" class="btn btn-secondary" disabled>
+          Indisponível
+        </button>
+
+      {{/if}}
+
+    </div>
+
+  </div>
+
+</section>

@@ -1,0 +1,41 @@
+.minha-conta-page {
+  max-width: 1050px;
+  margin: 0 auto;
+}
+
+.conta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 20px;
+}
+
+.conta-card {
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+}
+
+.conta-card h3 {
+  margin-top: 0;
+  color: var(--color-primary-dark);
+}
+
+.conta-pedidos {
+  margin-top: 24px;
+}
+
+.conta-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 800px) {
+  .conta-grid {
+    grid-template-columns: 1fr;
+  }
+}

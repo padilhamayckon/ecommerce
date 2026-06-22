@@ -1,0 +1,43 @@
+.form-contato,
+.form-usuario,
+.form-registro {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form-usuario label,
+.form-grupo label {
+  font-weight: bold;
+  color: var(--color-primary-dark);
+}
+
+.form-contato input,
+.form-contato textarea,
+.form-usuario input,
+.form-usuario select,
+.form-grupo input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  color: var(--color-text);
+  background: var(--color-white);
+}
+
+.form-contato input:focus,
+.form-contato textarea:focus,
+.form-usuario input:focus,
+.form-usuario select:focus,
+.form-grupo input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(54, 173, 163, 0.18);
+}
+
+.form-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

@@ -1,0 +1,40 @@
+.sucesso {
+  color: #69703f;
+  font-weight: bold;
+}
+
+.erro {
+  color: var(--color-danger);
+  font-weight: bold;
+}
+
+.alert {
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  margin: 16px 0;
+  border: none;
+}
+
+.alert-info {
+  background: #f8edd8;
+  color: #6f6257;
+  border: 1px solid #d7c4aa;
+}
+
+.alert-warning {
+  background: #efe1bd;
+  color: #6f6257;
+  border: 1px solid #d7c4aa;
+}
+
+.alert-success {
+  background: rgba(186, 191, 148, 0.35);
+  color: #4f552e;
+  border: 1px solid rgba(186, 191, 148, 0.65);
+}
+
+.alert-danger {
+  background: rgba(185, 74, 72, 0.12);
+  color: var(--color-danger-dark);
+  border: 1px solid rgba(185, 74, 72, 0.35);
+}
