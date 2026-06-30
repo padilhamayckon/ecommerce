@@ -6,6 +6,7 @@ const path = require("path");
 const session = require("express-session");
 const bcrypt = require("bcrypt");
 
+const sequelize = require("./db");
 const Usuario = require("./models/Usuario");
 
 const paginaRoutes = require("./routes/paginaRoutes");
@@ -22,6 +23,12 @@ const PORT = process.env.PORT || 3000;
 
 /* SEGURANÇA BÁSICA */
 app.disable("x-powered-by");
+
+/*
+  Necessário em algumas hospedagens que usam proxy/reverse proxy.
+  Ajuda principalmente se depois você usar cookie secure: true.
+*/
+app.set("trust proxy", 1);
 
 /* HANDLEBARS */
 app.engine(
@@ -72,7 +79,8 @@ app.use(
     cookie: {
       httpOnly: true,
       sameSite: "lax",
-      maxAge: 1000 * 60 * 60 * 2, // 2 horas
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 1000 * 60 * 60 * 2,
     },
   })
 );
@@ -137,11 +145,25 @@ async function criarAdminInicial() {
 
 /* INICIA SISTEMA */
 async function iniciarServidor() {
-  await criarAdminInicial();
+  try {
+    await sequelize.authenticate();
 
-  app.listen(PORT, () => {
-    console.log(`Servidor rodando em http://localhost:${PORT}`);
-  });
+    console.log("Conectado ao banco com Sequelize.");
+
+    /*
+      Não use sync({ force: true }) em produção.
+      Se suas tabelas já existem, não precisa sincronizar aqui.
+    */
+
+    await criarAdminInicial();
+
+    app.listen(PORT, () => {
+      console.log(`Servidor rodando na porta ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Erro ao iniciar servidor:", error);
+    process.exit(1);
+  }
 }
 
 iniciarServidor();

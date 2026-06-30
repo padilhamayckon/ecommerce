@@ -1,195 +1,354 @@
-const db = require("../db");
+const { DataTypes, Op } = require("sequelize");
+const sequelize = require("../db");
+
+/* =========================
+   MODELS
+========================= */
+
+const ProdutoModel =
+  sequelize.models.Produto ||
+  sequelize.define(
+    "Produto",
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+
+      nome: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+
+      quantidade: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+
+      descricao: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+
+      valor: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+      },
+
+      imagem: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+      },
+
+      ativo: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 1,
+      },
+    },
+    {
+      tableName: "produtos",
+      timestamps: true,
+      createdAt: "createdAt",
+      updatedAt: "updatedAt",
+    }
+  );
+
+const CarrinhoReservaModel =
+  sequelize.models.CarrinhoReserva ||
+  sequelize.define(
+    "CarrinhoReserva",
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+
+      produto_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+
+      session_id: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+
+      quantidade: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+
+      status: {
+        type: DataTypes.STRING(50),
+        allowNull: false,
+        defaultValue: "ativa",
+      },
+
+      expiraEm: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        field: "expiraEm",
+      },
+    },
+    {
+      tableName: "carrinho_reservas",
+      timestamps: true,
+      createdAt: "createdAt",
+      updatedAt: "updatedAt",
+    }
+  );
+
+/* Evita erro caso a associação já tenha sido criada em outro arquivo */
+if (!CarrinhoReservaModel.associations.produto) {
+  CarrinhoReservaModel.belongsTo(ProdutoModel, {
+    foreignKey: "produto_id",
+    as: "produto",
+  });
+}
+
+/* =========================
+   FUNÇÕES AUXILIARES
+========================= */
+
+function dataExpiracaoCarrinho() {
+  return new Date(Date.now() + 15 * 60 * 1000);
+}
+
+async function totalReservadoProduto(produtoId, transaction = null) {
+  const total = await CarrinhoReservaModel.sum("quantidade", {
+    where: {
+      produto_id: produtoId,
+      status: "ativa",
+      expiraEm: {
+        [Op.gt]: new Date(),
+      },
+    },
+    transaction,
+  });
+
+  return Number(total) || 0;
+}
 
 /* EXPIRAR RESERVAS VENCIDAS */
-async function expirarReservas() {
-  await db.query(`
-    UPDATE carrinho_reservas
-    SET status = 'expirada'
-    WHERE status = 'ativa'
-    AND expiraEm <= NOW()
-  `);
+async function expirarReservas(transaction = null) {
+  await CarrinhoReservaModel.update(
+    {
+      status: "expirada",
+    },
+    {
+      where: {
+        status: "ativa",
+        expiraEm: {
+          [Op.lte]: new Date(),
+        },
+      },
+      transaction,
+    }
+  );
 }
+
+/* =========================
+   PRODUTOS
+========================= */
 
 /* LISTAR TODOS OS PRODUTOS - ADMIN */
 async function listarTodos() {
-  const [rows] = await db.query(`
-    SELECT 
-      id,
-      nome,
-      quantidade,
-      descricao,
-      valor,
-      imagem,
-      ativo,
-      createdAt,
-      updatedAt
-    FROM produtos
-    ORDER BY id DESC
-  `);
+  const produtos = await ProdutoModel.findAll({
+    attributes: [
+      "id",
+      "nome",
+      "quantidade",
+      "descricao",
+      "valor",
+      "imagem",
+      "ativo",
+      "createdAt",
+      "updatedAt",
+    ],
+    order: [["id", "DESC"]],
+    raw: true,
+  });
 
-  return rows;
+  return produtos;
 }
 
 /* LISTAR APENAS PRODUTOS ATIVOS - CATÁLOGO */
 async function listarAtivos() {
   await expirarReservas();
 
-  const [rows] = await db.query(`
-    SELECT 
-      p.id,
-      p.nome,
+  const produtos = await ProdutoModel.findAll({
+    attributes: [
+      "id",
+      "nome",
+      "quantidade",
+      "descricao",
+      "valor",
+      "imagem",
+      "ativo",
+    ],
+    where: {
+      ativo: 1,
+    },
+    order: [["id", "DESC"]],
+    raw: true,
+  });
 
-      GREATEST(
-        p.quantidade - COALESCE(r.total_reservado, 0),
-        0
-      ) AS quantidade,
+  const reservas = await CarrinhoReservaModel.findAll({
+    attributes: [
+      "produto_id",
+      [sequelize.fn("SUM", sequelize.col("quantidade")), "total_reservado"],
+    ],
+    where: {
+      status: "ativa",
+      expiraEm: {
+        [Op.gt]: new Date(),
+      },
+    },
+    group: ["produto_id"],
+    raw: true,
+  });
 
-      p.descricao,
-      p.valor,
-      p.imagem,
-      p.ativo
+  const mapaReservas = {};
 
-    FROM produtos p
+  for (const reserva of reservas) {
+    mapaReservas[reserva.produto_id] = Number(reserva.total_reservado) || 0;
+  }
 
-    LEFT JOIN (
-      SELECT 
-        produto_id,
-        SUM(quantidade) AS total_reservado
-      FROM carrinho_reservas
-      WHERE status = 'ativa'
-      AND expiraEm > NOW()
-      GROUP BY produto_id
-    ) r ON r.produto_id = p.id
+  return produtos.map((produto) => {
+    const totalReservado = mapaReservas[produto.id] || 0;
 
-    WHERE p.ativo = 1
-    ORDER BY p.id DESC
-  `);
-
-  return rows;
+    return {
+      ...produto,
+      quantidade: Math.max(Number(produto.quantidade) - totalReservado, 0),
+    };
+  });
 }
 
 /* BUSCAR PRODUTO POR ID - USADO NO ADMIN */
 async function buscarPorId(id) {
-  const [rows] = await db.query(
-    `
-      SELECT 
-        id,
-        nome,
-        quantidade,
-        descricao,
-        valor,
-        imagem,
-        ativo,
-        createdAt,
-        updatedAt
-      FROM produtos
-      WHERE id = ?
-      LIMIT 1
-    `,
-    [id]
-  );
+  const produto = await ProdutoModel.findOne({
+    attributes: [
+      "id",
+      "nome",
+      "quantidade",
+      "descricao",
+      "valor",
+      "imagem",
+      "ativo",
+      "createdAt",
+      "updatedAt",
+    ],
+    where: {
+      id,
+    },
+    raw: true,
+  });
 
-  return rows[0];
+  return produto;
 }
 
 /* BUSCAR PRODUTO ATIVO COM QUANTIDADE DISPONÍVEL - USADO NO CATÁLOGO/DETALHES */
 async function buscarPorIdComDisponivel(id) {
   await expirarReservas();
 
-  const [rows] = await db.query(
-    `
-      SELECT 
-        p.id,
-        p.nome,
+  const produto = await ProdutoModel.findOne({
+    attributes: [
+      "id",
+      "nome",
+      "quantidade",
+      "descricao",
+      "valor",
+      "imagem",
+      "ativo",
+      "createdAt",
+      "updatedAt",
+    ],
+    where: {
+      id,
+      ativo: 1,
+    },
+    raw: true,
+  });
 
-        GREATEST(
-          p.quantidade - COALESCE(r.total_reservado, 0),
-          0
-        ) AS quantidade,
+  if (!produto) {
+    return undefined;
+  }
 
-        p.descricao,
-        p.valor,
-        p.imagem,
-        p.ativo,
-        p.createdAt,
-        p.updatedAt
+  const totalReservado = await totalReservadoProduto(id);
 
-      FROM produtos p
-
-      LEFT JOIN (
-        SELECT 
-          produto_id,
-          SUM(quantidade) AS total_reservado
-        FROM carrinho_reservas
-        WHERE status = 'ativa'
-        AND expiraEm > NOW()
-        GROUP BY produto_id
-      ) r ON r.produto_id = p.id
-
-      WHERE p.id = ?
-      AND p.ativo = 1
-      LIMIT 1
-    `,
-    [id]
-  );
-
-  return rows[0];
+  return {
+    ...produto,
+    quantidade: Math.max(Number(produto.quantidade) - totalReservado, 0),
+  };
 }
 
 /* CRIAR PRODUTO */
 async function criarProduto(nome, quantidade, descricao, valor, imagem, ativo = 1) {
-  await db.query(
-    `
-      INSERT INTO produtos
-      (nome, quantidade, descricao, valor, imagem, ativo)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `,
-    [nome, quantidade, descricao, valor, imagem, ativo]
-  );
+  const produto = await ProdutoModel.create({
+    nome,
+    quantidade,
+    descricao,
+    valor,
+    imagem,
+    ativo,
+  });
+
+  return produto.id;
 }
 
 /* ATUALIZAR PRODUTO COM IMAGEM */
 async function atualizarProduto(id, nome, quantidade, descricao, valor, imagem, ativo) {
-  await db.query(
-    `
-      UPDATE produtos
-      SET 
-        nome = ?,
-        quantidade = ?,
-        descricao = ?,
-        valor = ?,
-        imagem = ?,
-        ativo = ?
-      WHERE id = ?
-    `,
-    [nome, quantidade, descricao, valor, imagem, ativo, id]
+  await ProdutoModel.update(
+    {
+      nome,
+      quantidade,
+      descricao,
+      valor,
+      imagem,
+      ativo,
+    },
+    {
+      where: {
+        id,
+      },
+    }
   );
 }
 
 /* ATUALIZAR PRODUTO SEM ALTERAR IMAGEM */
 async function atualizarProdutoSemImagem(id, nome, quantidade, descricao, valor, ativo) {
-  await db.query(
-    `
-      UPDATE produtos
-      SET 
-        nome = ?,
-        quantidade = ?,
-        descricao = ?,
-        valor = ?,
-        ativo = ?
-      WHERE id = ?
-    `,
-    [nome, quantidade, descricao, valor, ativo, id]
+  await ProdutoModel.update(
+    {
+      nome,
+      quantidade,
+      descricao,
+      valor,
+      ativo,
+    },
+    {
+      where: {
+        id,
+      },
+    }
   );
 }
 
 /* EXCLUIR PRODUTO */
 async function excluirProduto(id) {
-  await db.query(
-    "DELETE FROM produtos WHERE id = ?",
-    [id]
-  );
+  await ProdutoModel.destroy({
+    where: {
+      id,
+    },
+  });
 }
+
+/* =========================
+   CARRINHO / RESERVAS
+========================= */
 
 /* RESERVAR PRODUTO NO CARRINHO */
 async function reservarProduto(produtoId, sessionId, quantidade) {
@@ -202,201 +361,289 @@ async function reservarProduto(produtoId, sessionId, quantidade) {
     };
   }
 
-  await expirarReservas();
+  const transaction = await sequelize.transaction();
 
-  const produto = await buscarPorIdComDisponivel(produtoId);
+  try {
+    await expirarReservas(transaction);
 
-  if (!produto) {
-    return {
-      sucesso: false,
-      mensagem: "Produto não encontrado.",
-    };
-  }
+    const produto = await ProdutoModel.findOne({
+      where: {
+        id: produtoId,
+        ativo: 1,
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
 
-  if (Number(produto.quantidade) < quantidade) {
-    return {
-      sucesso: false,
-      mensagem: "Quantidade indisponível em estoque.",
-    };
-  }
+    if (!produto) {
+      await transaction.rollback();
 
-  const [reservaExistenteRows] = await db.query(
-    `
-      SELECT 
-        id,
-        quantidade
-      FROM carrinho_reservas
-      WHERE produto_id = ?
-      AND session_id = ?
-      AND status = 'ativa'
-      AND expiraEm > NOW()
-      LIMIT 1
-    `,
-    [produtoId, sessionId]
-  );
+      return {
+        sucesso: false,
+        mensagem: "Produto não encontrado.",
+      };
+    }
 
-  const reservaExistente = reservaExistenteRows[0];
-
-  if (reservaExistente) {
-    await db.query(
-      `
-        UPDATE carrinho_reservas
-        SET 
-          quantidade = quantidade + ?,
-          expiraEm = DATE_ADD(NOW(), INTERVAL 15 MINUTE)
-        WHERE id = ?
-      `,
-      [quantidade, reservaExistente.id]
+    const totalReservado = await totalReservadoProduto(produtoId, transaction);
+    const quantidadeDisponivel = Math.max(
+      Number(produto.quantidade) - totalReservado,
+      0
     );
-  } else {
-    await db.query(
-      `
-        INSERT INTO carrinho_reservas
-        (
-          produto_id,
-          session_id,
+
+    if (quantidadeDisponivel < quantidade) {
+      await transaction.rollback();
+
+      return {
+        sucesso: false,
+        mensagem: "Quantidade indisponível em estoque.",
+      };
+    }
+
+    const reservaExistente = await CarrinhoReservaModel.findOne({
+      where: {
+        produto_id: produtoId,
+        session_id: sessionId,
+        status: "ativa",
+        expiraEm: {
+          [Op.gt]: new Date(),
+        },
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (reservaExistente) {
+      reservaExistente.quantidade =
+        Number(reservaExistente.quantidade) + quantidade;
+
+      reservaExistente.expiraEm = dataExpiracaoCarrinho();
+
+      await reservaExistente.save({
+        transaction,
+      });
+    } else {
+      await CarrinhoReservaModel.create(
+        {
+          produto_id: produtoId,
+          session_id: sessionId,
           quantidade,
-          status,
-          expiraEm
-        )
-        VALUES (?, ?, ?, 'ativa', DATE_ADD(NOW(), INTERVAL 15 MINUTE))
-      `,
-      [produtoId, sessionId, quantidade]
-    );
-  }
+          status: "ativa",
+          expiraEm: dataExpiracaoCarrinho(),
+        },
+        {
+          transaction,
+        }
+      );
+    }
 
-  return {
-    sucesso: true,
-    mensagem: "Produto adicionado ao carrinho.",
-  };
+    await transaction.commit();
+
+    return {
+      sucesso: true,
+      mensagem: "Produto adicionado ao carrinho.",
+    };
+  } catch (error) {
+    await transaction.rollback();
+
+    console.log("Erro ao reservar produto:", error);
+
+    return {
+      sucesso: false,
+      mensagem: "Erro ao adicionar produto ao carrinho.",
+    };
+  }
 }
 
 /* LISTAR PRODUTOS DO CARRINHO */
 async function listarReservasAtivasPorSessao(sessionId) {
   await expirarReservas();
 
-  const [rows] = await db.query(
-    `
-      SELECT 
-        r.produto_id AS id,
-        r.quantidade,
-        r.expiraEm,
+  const reservas = await CarrinhoReservaModel.findAll({
+    where: {
+      session_id: sessionId,
+      status: "ativa",
+      expiraEm: {
+        [Op.gt]: new Date(),
+      },
+    },
+    include: [
+      {
+        model: ProdutoModel,
+        as: "produto",
+        attributes: ["nome", "descricao", "valor", "imagem"],
+        required: true,
+      },
+    ],
+    order: [["createdAt", "DESC"]],
+  });
 
-        p.nome,
-        p.descricao,
-        p.valor,
-        p.imagem,
+  return reservas.map((reserva) => {
+    const produto = reserva.produto;
 
-        (p.valor * r.quantidade) AS subtotal
+    const valor = Number(produto.valor);
+    const quantidade = Number(reserva.quantidade);
 
-      FROM carrinho_reservas r
+    return {
+      id: reserva.produto_id,
+      quantidade,
+      expiraEm: reserva.expiraEm,
 
-      INNER JOIN produtos p ON p.id = r.produto_id
+      nome: produto.nome,
+      descricao: produto.descricao,
+      valor: produto.valor,
+      imagem: produto.imagem,
 
-      WHERE r.session_id = ?
-      AND r.status = 'ativa'
-      AND r.expiraEm > NOW()
-
-      ORDER BY r.createdAt DESC
-    `,
-    [sessionId]
-  );
-
-  return rows;
+      subtotal: valor * quantidade,
+    };
+  });
 }
 
 /* CANCELAR RESERVA DE UM PRODUTO */
 async function cancelarReservaProduto(produtoId, sessionId) {
-  await db.query(
-    `
-      UPDATE carrinho_reservas
-      SET status = 'cancelada'
-      WHERE produto_id = ?
-      AND session_id = ?
-      AND status = 'ativa'
-    `,
-    [produtoId, sessionId]
+  await CarrinhoReservaModel.update(
+    {
+      status: "cancelada",
+    },
+    {
+      where: {
+        produto_id: produtoId,
+        session_id: sessionId,
+        status: "ativa",
+      },
+    }
   );
 }
 
 /* CANCELAR TODAS AS RESERVAS DA SESSÃO */
 async function cancelarReservasDaSessao(sessionId) {
-  await db.query(
-    `
-      UPDATE carrinho_reservas
-      SET status = 'cancelada'
-      WHERE session_id = ?
-      AND status = 'ativa'
-    `,
-    [sessionId]
+  await CarrinhoReservaModel.update(
+    {
+      status: "cancelada",
+    },
+    {
+      where: {
+        session_id: sessionId,
+        status: "ativa",
+      },
+    }
   );
 }
 
 /* FINALIZAR CARRINHO - BAIXA ESTOQUE REAL */
 async function finalizarReservasDaSessao(sessionId) {
-  await expirarReservas();
+  const transaction = await sequelize.transaction();
 
-  const reservas = await listarReservasAtivasPorSessao(sessionId);
+  try {
+    await expirarReservas(transaction);
 
-  if (!reservas.length) {
-    return {
-      sucesso: false,
-      mensagem: "Carrinho vazio.",
-    };
-  }
+    const reservas = await CarrinhoReservaModel.findAll({
+      where: {
+        session_id: sessionId,
+        status: "ativa",
+        expiraEm: {
+          [Op.gt]: new Date(),
+        },
+      },
+      include: [
+        {
+          model: ProdutoModel,
+          as: "produto",
+          required: true,
+        },
+      ],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
 
-  for (const item of reservas) {
-    const [resultado] = await db.query(
-      `
-        UPDATE produtos
-        SET quantidade = quantidade - ?
-        WHERE id = ?
-        AND quantidade >= ?
-      `,
-      [item.quantidade, item.id, item.quantidade]
-    );
+    if (!reservas.length) {
+      await transaction.rollback();
 
-    if (resultado.affectedRows === 0) {
       return {
         sucesso: false,
-        mensagem: "Estoque insuficiente ao finalizar.",
+        mensagem: "Carrinho vazio.",
       };
     }
+
+    for (const reserva of reservas) {
+      const quantidade = Number(reserva.quantidade);
+
+      const [afetados] = await ProdutoModel.update(
+        {
+          quantidade: sequelize.literal(`quantidade - ${quantidade}`),
+        },
+        {
+          where: {
+            id: reserva.produto_id,
+            quantidade: {
+              [Op.gte]: quantidade,
+            },
+          },
+          transaction,
+        }
+      );
+
+      if (afetados === 0) {
+        await transaction.rollback();
+
+        return {
+          sucesso: false,
+          mensagem: "Estoque insuficiente ao finalizar.",
+        };
+      }
+    }
+
+    await CarrinhoReservaModel.update(
+      {
+        status: "finalizada",
+      },
+      {
+        where: {
+          session_id: sessionId,
+          status: "ativa",
+        },
+        transaction,
+      }
+    );
+
+    await transaction.commit();
+
+    return {
+      sucesso: true,
+      mensagem: "Carrinho finalizado com sucesso.",
+    };
+  } catch (error) {
+    await transaction.rollback();
+
+    console.log("Erro ao finalizar reservas da sessão:", error);
+
+    return {
+      sucesso: false,
+      mensagem: "Erro ao finalizar carrinho.",
+    };
   }
-
-  await db.query(
-    `
-      UPDATE carrinho_reservas
-      SET status = 'finalizada'
-      WHERE session_id = ?
-      AND status = 'ativa'
-    `,
-    [sessionId]
-  );
-
-  return {
-    sucesso: true,
-    mensagem: "Carrinho finalizado com sucesso.",
-  };
 }
+
 /* CONTAR ITENS RESERVADOS NO CARRINHO DA SESSÃO */
 async function contarReservasAtivasPorSessao(sessionId) {
-  const [rows] = await db.query(
-    `
-      SELECT 
-        COALESCE(SUM(quantidade), 0) AS total
-      FROM carrinho_reservas
-      WHERE session_id = ?
-      AND status = 'ativa'
-      AND expiraEm > NOW()
-    `,
-    [sessionId]
-  );
+  await expirarReservas();
 
-  return Number(rows[0].total) || 0;
+  const total = await CarrinhoReservaModel.sum("quantidade", {
+    where: {
+      session_id: sessionId,
+      status: "ativa",
+      expiraEm: {
+        [Op.gt]: new Date(),
+      },
+    },
+  });
+
+  return Number(total) || 0;
 }
 
 module.exports = {
+  ProdutoModel,
+  CarrinhoReservaModel,
+
   listarTodos,
   listarAtivos,
   buscarPorId,

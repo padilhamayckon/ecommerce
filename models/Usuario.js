@@ -1,282 +1,291 @@
-const db = require("../db");
+const { DataTypes, Op } = require("sequelize");
+const sequelize = require("../db");
+
+const UsuarioModel =
+  sequelize.models.Usuario ||
+  sequelize.define(
+    "Usuario",
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+
+      nome: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+
+      email: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+
+      cpf_cnpj: {
+        type: DataTypes.STRING(20),
+        allowNull: true,
+      },
+
+      senha: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+
+      tipo_usuario: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+
+      criado_em: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+    },
+    {
+      tableName: "usuarios",
+      timestamps: false,
+    }
+  );
 
 /* LISTAR TODOS USUARIOS */
 async function listarTodos() {
-  const [rows] = await db.query(`
-    SELECT id, nome, email, tipo_usuario, criado_em
-    FROM usuarios
-    ORDER BY id DESC
-  `);
+  const usuarios = await UsuarioModel.findAll({
+    attributes: ["id", "nome", "email", "tipo_usuario", "criado_em"],
+    order: [["id", "DESC"]],
+    raw: true,
+  });
 
-  return rows;
+  return usuarios;
 }
 
 /* BUSCAR USUARIO POR EMAIL */
 async function buscarPorEmail(email) {
-  const [rows] = await db.query(
-    "SELECT * FROM usuarios WHERE email = ? LIMIT 1",
-    [email]
-  );
+  const usuario = await UsuarioModel.findOne({
+    attributes: [
+      "id",
+      "nome",
+      "email",
+      "cpf_cnpj",
+      "senha",
+      "tipo_usuario",
+      "criado_em",
+    ],
+    where: {
+      email,
+    },
+    raw: true,
+  });
 
-  return rows[0];
+  return usuario;
 }
 
 /* BUSCAR USUARIO POR ID */
 async function buscarPorId(id) {
-  const [rows] = await db.query(
-    "SELECT * FROM usuarios WHERE id = ? LIMIT 1",
-    [id]
-  );
+  const usuario = await UsuarioModel.findOne({
+    attributes: [
+      "id",
+      "nome",
+      "email",
+      "cpf_cnpj",
+      "tipo_usuario",
+      "criado_em",
+    ],
+    where: {
+      id,
+    },
+    raw: true,
+  });
 
-  return rows[0];
+  return usuario;
 }
 
+/* VERIFICAR SE EXISTE ADMINISTRADOR */
 async function existeAdministrador() {
-  const { rows } = await db.query(
-    "SELECT * FROM usuarios WHERE tipo_usuario = 1 LIMIT 1"
-  );
+  const total = await UsuarioModel.count({
+    where: {
+      tipo_usuario: 1,
+    },
+  });
 
-  return rows.length > 0;
+  return total > 0;
 }
 
 /* CRIAR ADMINISTRADOR */
 async function criarAdministrador(nome, email, senha) {
-  await db.query(
-    `
-      INSERT INTO usuarios
-      (nome, email, senha, tipo_usuario)
-      VALUES (?, ?, ?, 1)
-    `,
-    [nome, email, senha]
-  );
+  const usuario = await UsuarioModel.create({
+    nome,
+    email,
+    senha,
+    tipo_usuario: 1,
+  });
+
+  return usuario.id;
 }
 
 /* CRIAR USUARIO */
 async function criarUsuario(nome, email, senha, tipo_usuario) {
-  await db.query(
-    `
-      INSERT INTO usuarios
-      (nome, email, senha, tipo_usuario)
-      VALUES (?, ?, ?, ?)
-    `,
-    [nome, email, senha, tipo_usuario]
-  );
+  const usuario = await UsuarioModel.create({
+    nome,
+    email,
+    senha,
+    tipo_usuario,
+  });
+
+  return usuario.id;
+}
+
+/* CRIAR CLIENTE */
+async function criarCliente(nome, email, cpfCnpj, senhaHash) {
+  const usuario = await UsuarioModel.create({
+    nome,
+    email,
+    cpf_cnpj: cpfCnpj,
+    senha: senhaHash,
+    tipo_usuario: 3,
+  });
+
+  return usuario.id;
+}
+
+/* BUSCAR USUÁRIO POR CPF/CNPJ */
+async function buscarPorCpfCnpj(cpfCnpj) {
+  const usuario = await UsuarioModel.findOne({
+    attributes: ["id", "nome", "email", "cpf_cnpj", "senha", "tipo_usuario"],
+    where: {
+      cpf_cnpj: cpfCnpj,
+    },
+    raw: true,
+  });
+
+  return usuario;
 }
 
 /* ATUALIZAR USUARIO SEM ALTERAR SENHA */
 async function atualizarUsuario(id, nome, email, tipo_usuario) {
-  await db.query(
-    `
-      UPDATE usuarios
-      SET nome = ?, email = ?, tipo_usuario = ?
-      WHERE id = ?
-    `,
-    [nome, email, tipo_usuario, id]
+  await UsuarioModel.update(
+    {
+      nome,
+      email,
+      tipo_usuario,
+    },
+    {
+      where: {
+        id,
+      },
+    }
   );
 }
 
 /* ATUALIZAR USUARIO COM NOVA SENHA */
 async function atualizarUsuarioComSenha(id, nome, email, senha, tipo_usuario) {
-  await db.query(
-    `
-      UPDATE usuarios
-      SET nome = ?, email = ?, senha = ?, tipo_usuario = ?
-      WHERE id = ?
-    `,
-    [nome, email, senha, tipo_usuario, id]
+  await UsuarioModel.update(
+    {
+      nome,
+      email,
+      senha,
+      tipo_usuario,
+    },
+    {
+      where: {
+        id,
+      },
+    }
+  );
+}
+
+/* ATUALIZAR SENHA */
+async function atualizarSenha(id, senhaHash) {
+  await UsuarioModel.update(
+    {
+      senha: senhaHash,
+    },
+    {
+      where: {
+        id,
+      },
+    }
+  );
+}
+
+/* ATUALIZAR DADOS DO CLIENTE */
+async function atualizarDadosCliente(id, nome, email, cpfCnpj) {
+  await UsuarioModel.update(
+    {
+      nome,
+      email,
+      cpf_cnpj: cpfCnpj,
+    },
+    {
+      where: {
+        id,
+        tipo_usuario: 3,
+      },
+    }
   );
 }
 
 /* EXCLUIR USUARIO */
 async function excluirUsuario(id) {
-  await db.query(
-    "DELETE FROM usuarios WHERE id = ?",
-    [id]
-  );
-}
-async function criarCliente(nome, email, cpfCnpj, senhaHash) {
-  const [resultado] = await db.query(
-    `
-      INSERT INTO usuarios
-      (
-        nome,
-        email,
-        cpf_cnpj,
-        senha,
-        tipo_usuario
-      )
-      VALUES (?, ?, ?, ?, 3)
-    `,
-    [nome, email, cpfCnpj, senhaHash]
-  );
-
-  return resultado.insertId;
+  await UsuarioModel.destroy({
+    where: {
+      id,
+    },
+  });
 }
 
-/* BUSCAR USUÁRIO POR E-MAIL */
-async function buscarPorEmail(email) {
-  const [rows] = await db.query(
-    `
-      SELECT 
-        id,
-        nome,
-        email,
-        cpf_cnpj,
-        senha,
-        tipo_usuario
-      FROM usuarios
-      WHERE email = ?
-      LIMIT 1
-    `,
-    [email]
-  );
-
-  return rows[0];
-}
-
-/* BUSCAR USUÁRIO POR CPF/CNPJ */
-async function buscarPorCpfCnpj(cpfCnpj) {
-  const [rows] = await db.query(
-    `
-      SELECT 
-        id,
-        nome,
-        email,
-        cpf_cnpj,
-        senha,
-        tipo_usuario
-      FROM usuarios
-      WHERE cpf_cnpj = ?
-      LIMIT 1
-    `,
-    [cpfCnpj]
-  );
-
-  return rows[0];
-}
-
-/* CRIAR CLIENTE */
-async function criarCliente(nome, email, cpfCnpj, senhaHash) {
-  const [resultado] = await db.query(
-    `
-      INSERT INTO usuarios
-      (
-        nome,
-        email,
-        cpf_cnpj,
-        senha,
-        tipo_usuario
-      )
-      VALUES (?, ?, ?, ?, 3)
-    `,
-    [nome, email, cpfCnpj, senhaHash]
-  );
-
-  return resultado.insertId;
-}
-
-async function atualizarSenha(id, senhaHash) {
-  await db.query(
-    `
-      UPDATE usuarios
-      SET senha = ?
-      WHERE id = ?
-    `,
-    [senhaHash, id]
-  );
-}
-async function buscarPorId(id) {
-  const [rows] = await db.query(
-    `
-      SELECT 
-        id,
-        nome,
-        email,
-        cpf_cnpj,
-        tipo_usuario
-      FROM usuarios
-      WHERE id = ?
-      LIMIT 1
-    `,
-    [id]
-  );
-
-  return rows[0];
-}
-
-async function atualizarDadosCliente(id, nome, email, cpfCnpj) {
-  await db.query(
-    `
-      UPDATE usuarios
-      SET 
-        nome = ?,
-        email = ?,
-        cpf_cnpj = ?
-      WHERE id = ?
-      AND tipo_usuario = 3
-    `,
-    [nome, email, cpfCnpj, id]
-  );
-}
-
+/* BUSCAR EMAIL EM OUTRO USUARIO */
 async function buscarEmailEmOutroUsuario(email, id) {
-  const [rows] = await db.query(
-    `
-      SELECT id
-      FROM usuarios
-      WHERE email = ?
-      AND id <> ?
-      LIMIT 1
-    `,
-    [email, id]
-  );
+  const usuario = await UsuarioModel.findOne({
+    attributes: ["id"],
+    where: {
+      email,
+      id: {
+        [Op.ne]: id,
+      },
+    },
+    raw: true,
+  });
 
-  return rows[0];
+  return usuario;
 }
 
+/* BUSCAR CPF/CNPJ EM OUTRO USUARIO */
 async function buscarCpfCnpjEmOutroUsuario(cpfCnpj, id) {
-  const [rows] = await db.query(
-    `
-      SELECT id
-      FROM usuarios
-      WHERE cpf_cnpj = ?
-      AND id <> ?
-      LIMIT 1
-    `,
-    [cpfCnpj, id]
-  );
+  const usuario = await UsuarioModel.findOne({
+    attributes: ["id"],
+    where: {
+      cpf_cnpj: cpfCnpj,
+      id: {
+        [Op.ne]: id,
+      },
+    },
+    raw: true,
+  });
 
-  return rows[0];
+  return usuario;
 }
-
-async function atualizarSenha(id, senhaHash) {
-  await db.query(
-    `
-      UPDATE usuarios
-      SET senha = ?
-      WHERE id = ?
-    `,
-    [senhaHash, id]
-  );
-}
-
 
 module.exports = {
+  UsuarioModel,
+
   listarTodos,
   buscarPorEmail,
   buscarPorId,
   atualizarSenha,
   existeAdministrador,
+
   criarAdministrador,
   criarUsuario,
+  criarCliente,
+
   atualizarUsuario,
   atualizarUsuarioComSenha,
-  excluirUsuario,
-  buscarPorEmail,
-  buscarPorCpfCnpj,
-  criarCliente,
   atualizarDadosCliente,
+
+  excluirUsuario,
+
+  buscarPorCpfCnpj,
   buscarEmailEmOutroUsuario,
   buscarCpfCnpjEmOutroUsuario,
-  atualizarSenha,
 };

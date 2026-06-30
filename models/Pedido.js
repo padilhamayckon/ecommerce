@@ -1,39 +1,233 @@
-const db = require("../db");
+const { DataTypes, Op } = require("sequelize");
+const sequelize = require("../db");
 
-/* FINALIZAR COMPRA COM BASE NAS RESERVAS DO CARRINHO */
+/* =========================
+   MODELS USADOS NESTE ARQUIVO
+========================= */
+
+const PedidoModel =
+  sequelize.models.Pedido ||
+  sequelize.define(
+    "Pedido",
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+
+      usuario_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+
+      total: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+      },
+
+      status: {
+        type: DataTypes.STRING(50),
+        allowNull: false,
+      },
+
+      criado_em: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+    },
+    {
+      tableName: "pedidos",
+      timestamps: false,
+    }
+  );
+
+const PedidoItemModel =
+  sequelize.models.PedidoItem ||
+  sequelize.define(
+    "PedidoItem",
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+
+      pedido_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+
+      produto_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+
+      nome_produto: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+
+      quantidade: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+
+      valor_unitario: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+      },
+
+      subtotal: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+      },
+    },
+    {
+      tableName: "pedido_itens",
+      timestamps: false,
+    }
+  );
+
+const CarrinhoReservaModel =
+  sequelize.models.CarrinhoReserva ||
+  sequelize.define(
+    "CarrinhoReserva",
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+
+      session_id: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+
+      produto_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+
+      quantidade: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+
+      status: {
+        type: DataTypes.STRING(50),
+        allowNull: false,
+      },
+
+      expiraEm: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        field: "expiraEm",
+      },
+    },
+    {
+      tableName: "carrinho_reservas",
+      timestamps: false,
+    }
+  );
+
+const ProdutoModel =
+  sequelize.models.Produto ||
+  sequelize.define(
+    "Produto",
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+
+      nome: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+
+      valor: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+      },
+
+      quantidade: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+    },
+    {
+      tableName: "produtos",
+      timestamps: false,
+    }
+  );
+
+/* =========================
+   RELACIONAMENTOS
+========================= */
+
+CarrinhoReservaModel.belongsTo(ProdutoModel, {
+  foreignKey: "produto_id",
+  as: "produto",
+});
+
+PedidoModel.hasMany(PedidoItemModel, {
+  foreignKey: "pedido_id",
+  as: "itens",
+});
+
+PedidoItemModel.belongsTo(PedidoModel, {
+  foreignKey: "pedido_id",
+  as: "pedido",
+});
+
+/* =========================
+   FINALIZAR COMPRA
+========================= */
+
 async function finalizarCompra(sessionId, usuarioId) {
-  const connection = await db.getConnection();
+  const transaction = await sequelize.transaction();
 
   try {
-    await connection.beginTransaction();
-
-    await connection.query(`
-      UPDATE carrinho_reservas
-      SET status = 'expirada'
-      WHERE status = 'ativa'
-      AND expiraEm <= NOW()
-    `);
-
-    const [itens] = await connection.query(
-      `
-        SELECT 
-          r.produto_id,
-          r.quantidade,
-          p.nome,
-          p.valor,
-          p.quantidade AS estoque_atual
-        FROM carrinho_reservas r
-        INNER JOIN produtos p ON p.id = r.produto_id
-        WHERE r.session_id = ?
-        AND r.status = 'ativa'
-        AND r.expiraEm > NOW()
-        FOR UPDATE
-      `,
-      [sessionId]
+    await CarrinhoReservaModel.update(
+      {
+        status: "expirada",
+      },
+      {
+        where: {
+          status: "ativa",
+          expiraEm: {
+            [Op.lte]: new Date(),
+          },
+        },
+        transaction,
+      }
     );
 
-    if (!itens.length) {
-      await connection.rollback();
+    const reservas = await CarrinhoReservaModel.findAll({
+      where: {
+        session_id: sessionId,
+        status: "ativa",
+        expiraEm: {
+          [Op.gt]: new Date(),
+        },
+      },
+      include: [
+        {
+          model: ProdutoModel,
+          as: "produto",
+          attributes: ["id", "nome", "valor", "quantidade"],
+          required: true,
+        },
+      ],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!reservas.length) {
+      await transaction.rollback();
 
       return {
         sucesso: false,
@@ -43,86 +237,85 @@ async function finalizarCompra(sessionId, usuarioId) {
 
     let total = 0;
 
-    for (const item of itens) {
-      if (Number(item.estoque_atual) < Number(item.quantidade)) {
-        await connection.rollback();
+    for (const reserva of reservas) {
+      const produto = reserva.produto;
+
+      const estoqueAtual = Number(produto.quantidade);
+      const quantidadeReservada = Number(reserva.quantidade);
+      const valorProduto = Number(produto.valor);
+
+      if (estoqueAtual < quantidadeReservada) {
+        await transaction.rollback();
 
         return {
           sucesso: false,
-          mensagem: `Estoque insuficiente para o produto ${item.nome}.`,
+          mensagem: `Estoque insuficiente para o produto ${produto.nome}.`,
         };
       }
 
-      total += Number(item.valor) * Number(item.quantidade);
+      total += valorProduto * quantidadeReservada;
     }
 
-    const [pedidoResultado] = await connection.query(
-      `
-        INSERT INTO pedidos
-        (
-          usuario_id,
-          total,
-          status
-        )
-        VALUES (?, ?, 'finalizado')
-      `,
-      [usuarioId, total]
+    const pedido = await PedidoModel.create(
+      {
+        usuario_id: usuarioId,
+        total,
+        status: "finalizado",
+      },
+      {
+        transaction,
+      }
     );
 
-    const pedidoId = pedidoResultado.insertId;
+    const pedidoId = pedido.id;
 
-    for (const item of itens) {
-      const subtotal = Number(item.valor) * Number(item.quantidade);
+    for (const reserva of reservas) {
+      const produto = reserva.produto;
 
-      await connection.query(
-        `
-          INSERT INTO pedido_itens
-          (
-            pedido_id,
-            produto_id,
-            nome_produto,
-            quantidade,
-            valor_unitario,
-            subtotal
-          )
-          VALUES (?, ?, ?, ?, ?, ?)
-        `,
-        [
-          pedidoId,
-          item.produto_id,
-          item.nome,
-          item.quantidade,
-          item.valor,
+      const quantidade = Number(reserva.quantidade);
+      const valorUnitario = Number(produto.valor);
+      const subtotal = valorUnitario * quantidade;
+
+      await PedidoItemModel.create(
+        {
+          pedido_id: pedidoId,
+          produto_id: reserva.produto_id,
+          nome_produto: produto.nome,
+          quantidade,
+          valor_unitario: valorUnitario,
           subtotal,
-        ]
+        },
+        {
+          transaction,
+        }
       );
 
-      await connection.query(
-        `
-          UPDATE produtos
-          SET quantidade = quantidade - ?
-          WHERE id = ?
-          AND quantidade >= ?
-        `,
-        [
-          item.quantidade,
-          item.produto_id,
-          item.quantidade,
-        ]
-      );
+      await ProdutoModel.decrement("quantidade", {
+        by: quantidade,
+        where: {
+          id: reserva.produto_id,
+          quantidade: {
+            [Op.gte]: quantidade,
+          },
+        },
+        transaction,
+      });
     }
 
-    await connection.query(
-      `
-        UPDATE carrinho_reservas
-        SET status = 'finalizada'
-        WHERE session_id = ?
-        AND status = 'ativa'
-      `,
-      [sessionId]
+    await CarrinhoReservaModel.update(
+      {
+        status: "finalizada",
+      },
+      {
+        where: {
+          session_id: sessionId,
+          status: "ativa",
+        },
+        transaction,
+      }
     );
 
-    await connection.commit();
+    await transaction.commit();
 
     return {
       sucesso: true,
@@ -130,7 +323,7 @@ async function finalizarCompra(sessionId, usuarioId) {
       mensagem: "Compra finalizada com sucesso.",
     };
   } catch (error) {
-    await connection.rollback();
+    await transaction.rollback();
 
     console.log("Erro ao finalizar compra:", error);
 
@@ -138,73 +331,72 @@ async function finalizarCompra(sessionId, usuarioId) {
       sucesso: false,
       mensagem: "Erro ao finalizar compra.",
     };
-  } finally {
-    connection.release();
   }
 }
 
-/* LISTAR PEDIDOS DO CLIENTE */
+/* =========================
+   LISTAR PEDIDOS DO CLIENTE
+========================= */
+
 async function listarPorUsuario(usuarioId) {
-  const [rows] = await db.query(
-    `
-      SELECT 
-        id,
-        total,
-        status,
-        criado_em
-      FROM pedidos
-      WHERE usuario_id = ?
-      ORDER BY criado_em DESC
-    `,
-    [usuarioId]
-  );
+  const pedidos = await PedidoModel.findAll({
+    attributes: ["id", "total", "status", "criado_em"],
+    where: {
+      usuario_id: usuarioId,
+    },
+    order: [["criado_em", "DESC"]],
+    raw: true,
+  });
 
-  return rows;
+  return pedidos;
 }
 
-/* BUSCAR PEDIDO DO CLIENTE */
+/* =========================
+   BUSCAR PEDIDO DO CLIENTE
+========================= */
+
 async function buscarPedidoDoUsuario(pedidoId, usuarioId) {
-  const [rows] = await db.query(
-    `
-      SELECT 
-        id,
-        usuario_id,
-        total,
-        status,
-        criado_em
-      FROM pedidos
-      WHERE id = ?
-      AND usuario_id = ?
-      LIMIT 1
-    `,
-    [pedidoId, usuarioId]
-  );
+  const pedido = await PedidoModel.findOne({
+    attributes: ["id", "usuario_id", "total", "status", "criado_em"],
+    where: {
+      id: pedidoId,
+      usuario_id: usuarioId,
+    },
+    raw: true,
+  });
 
-  return rows[0];
+  return pedido;
 }
 
-/* LISTAR ITENS DO PEDIDO */
-async function listarItensDoPedido(pedidoId) {
-  const [rows] = await db.query(
-    `
-      SELECT 
-        id,
-        produto_id,
-        nome_produto,
-        quantidade,
-        valor_unitario,
-        subtotal
-      FROM pedido_itens
-      WHERE pedido_id = ?
-      ORDER BY id ASC
-    `,
-    [pedidoId]
-  );
+/* =========================
+   LISTAR ITENS DO PEDIDO
+========================= */
 
-  return rows;
+async function listarItensDoPedido(pedidoId) {
+  const itens = await PedidoItemModel.findAll({
+    attributes: [
+      "id",
+      "produto_id",
+      "nome_produto",
+      "quantidade",
+      "valor_unitario",
+      "subtotal",
+    ],
+    where: {
+      pedido_id: pedidoId,
+    },
+    order: [["id", "ASC"]],
+    raw: true,
+  });
+
+  return itens;
 }
 
 module.exports = {
+  PedidoModel,
+  PedidoItemModel,
+  CarrinhoReservaModel,
+
   finalizarCompra,
   listarPorUsuario,
   buscarPedidoDoUsuario,
