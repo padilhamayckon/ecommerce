@@ -31,9 +31,8 @@ async function buscarPorId(id) {
   return rows[0];
 }
 
-/* VERIFICA SE EXISTE ADMINISTRADOR */
 async function existeAdministrador() {
-  const [rows] = await db.query(
+  const { rows } = await db.query(
     "SELECT * FROM usuarios WHERE tipo_usuario = 1 LIMIT 1"
   );
 
