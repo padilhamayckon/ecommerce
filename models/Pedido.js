@@ -168,20 +168,26 @@ const ProdutoModel =
    RELACIONAMENTOS
 ========================= */
 
-CarrinhoReservaModel.belongsTo(ProdutoModel, {
-  foreignKey: "produto_id",
-  as: "produto",
-});
+if (!CarrinhoReservaModel.associations.produto) {
+  CarrinhoReservaModel.belongsTo(ProdutoModel, {
+    foreignKey: "produto_id",
+    as: "produto",
+  });
+}
 
-PedidoModel.hasMany(PedidoItemModel, {
-  foreignKey: "pedido_id",
-  as: "itens",
-});
+if (!PedidoModel.associations.itens) {
+  PedidoModel.hasMany(PedidoItemModel, {
+    foreignKey: "pedido_id",
+    as: "itens",
+  });
+}
 
-PedidoItemModel.belongsTo(PedidoModel, {
-  foreignKey: "pedido_id",
-  as: "pedido",
-});
+if (!PedidoItemModel.associations.pedido) {
+  PedidoItemModel.belongsTo(PedidoModel, {
+    foreignKey: "pedido_id",
+    as: "pedido",
+  });
+}
 
 /* =========================
    FINALIZAR COMPRA
