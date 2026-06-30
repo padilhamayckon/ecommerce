@@ -33,11 +33,11 @@ async function adicionarProduto(req, res) {
       return res.redirect("/catalogo?erro=estoque");
     }
 
-    res.redirect("/carrinho");
+    return res.redirect("/carrinho");
   } catch (error) {
     console.log("Erro ao adicionar produto ao carrinho:", error);
 
-    res.redirect("/catalogo?erro=estoque");
+    return res.redirect("/catalogo?erro=estoque");
   }
 }
 
@@ -52,10 +52,17 @@ async function exibirCarrinho(req, res) {
       return soma + Number(item.valor) * Number(item.quantidade);
     }, 0);
 
+    let erro = null;
+
+    if (req.query.erro === "finalizar") {
+      erro = "Não foi possível finalizar a compra. Verifique o carrinho e tente novamente.";
+    }
+
     res.render("pages/carrinho", {
       titulo: "Carrinho",
       carrinho,
       total: total.toFixed(2),
+      erro,
     });
   } catch (error) {
     console.log("Erro ao exibir carrinho:", error);
@@ -64,6 +71,7 @@ async function exibirCarrinho(req, res) {
       titulo: "Carrinho",
       carrinho: [],
       total: "0.00",
+      erro: "Erro ao carregar o carrinho.",
     });
   }
 }
@@ -76,10 +84,11 @@ async function removerProduto(req, res) {
 
     await Produto.cancelarReservaProduto(id, sessionId);
 
-    res.redirect("/carrinho");
+    return res.redirect("/carrinho");
   } catch (error) {
     console.log("Erro ao remover produto do carrinho:", error);
-    res.redirect("/carrinho");
+
+    return res.redirect("/carrinho");
   }
 }
 
@@ -90,33 +99,21 @@ async function limparCarrinho(req, res) {
 
     await Produto.cancelarReservasDaSessao(sessionId);
 
-    res.redirect("/carrinho");
+    return res.redirect("/carrinho");
   } catch (error) {
     console.log("Erro ao limpar carrinho:", error);
-    res.redirect("/carrinho");
+
+    return res.redirect("/carrinho");
   }
 }
 
 /* FINALIZAR CARRINHO */
 async function finalizarCarrinho(req, res) {
   try {
-    const sessionId = req.sessionID;
-
-    const resultado = await Produto.finalizarReservasDaSessao(sessionId);
-
-    if (!resultado.sucesso) {
-      console.log("Erro ao finalizar carrinho:", resultado.mensagem);
-      return res.redirect("/carrinho");
+    if (!req.session.usuario) {
+      return res.redirect("/login");
     }
 
-    res.redirect("/catalogo");
-  } catch (error) {
-    console.log("Erro ao finalizar carrinho:", error);
-    res.redirect("/carrinho");
-  }
-}
-async function finalizarCarrinho(req, res) {
-  try {
     const sessionId = req.sessionID;
     const usuarioId = req.session.usuario.id;
 
@@ -137,7 +134,7 @@ async function finalizarCarrinho(req, res) {
 }
 
 module.exports = {
-    adicionarProduto,
+  adicionarProduto,
   exibirCarrinho,
   removerProduto,
   limparCarrinho,
