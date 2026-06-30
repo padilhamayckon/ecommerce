@@ -42,10 +42,14 @@ const ProdutoModel =
         allowNull: true,
       },
 
+      /*
+        PostgreSQL usa BOOLEAN real.
+        MySQL aceita BOOLEAN como TINYINT(1).
+      */
       ativo: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.BOOLEAN,
         allowNull: false,
-        defaultValue: 1,
+        defaultValue: true,
       },
     },
     {
@@ -88,6 +92,10 @@ const CarrinhoReservaModel =
         defaultValue: "ativa",
       },
 
+      /*
+        No JavaScript usamos expiraEm.
+        No PostgreSQL a coluna real é expira_em.
+      */
       expiraEm: {
         type: DataTypes.DATE,
         allowNull: false,
@@ -116,6 +124,24 @@ if (!CarrinhoReservaModel.associations.produto) {
 
 function dataExpiracaoCarrinho() {
   return new Date(Date.now() + 15 * 60 * 1000);
+}
+
+function normalizarAtivo(valor) {
+  if (valor === true) return true;
+  if (valor === false) return false;
+
+  if (valor === 1) return true;
+  if (valor === 0) return false;
+
+  if (valor === "1") return true;
+  if (valor === "0") return false;
+
+  if (valor === "true") return true;
+  if (valor === "false") return false;
+
+  if (valor === "on") return true;
+
+  return false;
 }
 
 async function totalReservadoProduto(produtoId, transaction = null) {
@@ -191,7 +217,7 @@ async function listarAtivos() {
       "ativo",
     ],
     where: {
-      ativo: 1,
+      ativo: true,
     },
     order: [["id", "DESC"]],
     raw: true,
@@ -269,7 +295,7 @@ async function buscarPorIdComDisponivel(id) {
     ],
     where: {
       id,
-      ativo: 1,
+      ativo: true,
     },
     raw: true,
   });
@@ -287,14 +313,14 @@ async function buscarPorIdComDisponivel(id) {
 }
 
 /* CRIAR PRODUTO */
-async function criarProduto(nome, quantidade, descricao, valor, imagem, ativo = 1) {
+async function criarProduto(nome, quantidade, descricao, valor, imagem, ativo = true) {
   const produto = await ProdutoModel.create({
     nome,
     quantidade,
     descricao,
     valor,
     imagem,
-    ativo,
+    ativo: normalizarAtivo(ativo),
   });
 
   return produto.id;
@@ -309,7 +335,7 @@ async function atualizarProduto(id, nome, quantidade, descricao, valor, imagem, 
       descricao,
       valor,
       imagem,
-      ativo,
+      ativo: normalizarAtivo(ativo),
     },
     {
       where: {
@@ -327,7 +353,7 @@ async function atualizarProdutoSemImagem(id, nome, quantidade, descricao, valor,
       quantidade,
       descricao,
       valor,
-      ativo,
+      ativo: normalizarAtivo(ativo),
     },
     {
       where: {
@@ -369,7 +395,7 @@ async function reservarProduto(produtoId, sessionId, quantidade) {
     const produto = await ProdutoModel.findOne({
       where: {
         id: produtoId,
-        ativo: 1,
+        ativo: true,
       },
       transaction,
       lock: transaction.LOCK.UPDATE,
@@ -385,6 +411,7 @@ async function reservarProduto(produtoId, sessionId, quantidade) {
     }
 
     const totalReservado = await totalReservadoProduto(produtoId, transaction);
+
     const quantidadeDisponivel = Math.max(
       Number(produto.quantidade) - totalReservado,
       0
@@ -474,7 +501,7 @@ async function listarReservasAtivasPorSessao(sessionId) {
         required: true,
       },
     ],
-    order: [["createdAt", "DESC"]],
+    order: [["created_at", "DESC"]],
   });
 
   return reservas.map((reserva) => {
