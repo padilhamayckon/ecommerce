@@ -91,14 +91,14 @@ const CarrinhoReservaModel =
       expiraEm: {
         type: DataTypes.DATE,
         allowNull: false,
-        field: "expiraEm",
+        field: "expira_em",
       },
     },
     {
       tableName: "carrinho_reservas",
       timestamps: true,
-      createdAt: "createdAt",
-      updatedAt: "updatedAt",
+      createdAt: "created_at",
+      updatedAt: "updated_at",
     }
   );
 

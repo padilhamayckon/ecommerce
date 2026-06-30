@@ -120,15 +120,17 @@ const CarrinhoReservaModel =
         allowNull: false,
       },
 
-      expiraEm: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        field: "expiraEm",
-      },
+expiraEm: {
+  type: DataTypes.DATE,
+  allowNull: false,
+  field: "expira_em",
+},
     },
     {
-      tableName: "carrinho_reservas",
-      timestamps: false,
+       tableName: "carrinho_reservas",
+  timestamps: true,
+  createdAt: "created_at",
+  updatedAt: "updated_at",
     }
   );
 
