@@ -43,20 +43,34 @@ const ProdutoModel =
       },
 
       /*
-        PostgreSQL usa BOOLEAN real.
-        MySQL aceita BOOLEAN como TINYINT(1).
+        No PostgreSQL o campo ativo é BOOLEAN.
+        No MySQL, BOOLEAN normalmente funciona como TINYINT(1).
       */
       ativo: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: true,
       },
+
+      /*
+        No JavaScript usamos createdAt/updatedAt.
+        No PostgreSQL as colunas reais são created_at/updated_at.
+      */
+      createdAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: "created_at",
+      },
+
+      updatedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: "updated_at",
+      },
     },
     {
       tableName: "produtos",
-      timestamps: true,
-      createdAt: "createdAt",
-      updatedAt: "updatedAt",
+      timestamps: false,
     }
   );
 
@@ -101,12 +115,22 @@ const CarrinhoReservaModel =
         allowNull: false,
         field: "expira_em",
       },
+
+      createdAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: "created_at",
+      },
+
+      updatedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: "updated_at",
+      },
     },
     {
       tableName: "carrinho_reservas",
-      timestamps: true,
-      createdAt: "created_at",
-      updatedAt: "updated_at",
+      timestamps: false,
     }
   );
 
@@ -164,6 +188,7 @@ async function expirarReservas(transaction = null) {
   await CarrinhoReservaModel.update(
     {
       status: "expirada",
+      updatedAt: new Date(),
     },
     {
       where: {
@@ -314,6 +339,8 @@ async function buscarPorIdComDisponivel(id) {
 
 /* CRIAR PRODUTO */
 async function criarProduto(nome, quantidade, descricao, valor, imagem, ativo = true) {
+  const agora = new Date();
+
   const produto = await ProdutoModel.create({
     nome,
     quantidade,
@@ -321,6 +348,8 @@ async function criarProduto(nome, quantidade, descricao, valor, imagem, ativo = 
     valor,
     imagem,
     ativo: normalizarAtivo(ativo),
+    createdAt: agora,
+    updatedAt: agora,
   });
 
   return produto.id;
@@ -336,6 +365,7 @@ async function atualizarProduto(id, nome, quantidade, descricao, valor, imagem, 
       valor,
       imagem,
       ativo: normalizarAtivo(ativo),
+      updatedAt: new Date(),
     },
     {
       where: {
@@ -354,6 +384,7 @@ async function atualizarProdutoSemImagem(id, nome, quantidade, descricao, valor,
       descricao,
       valor,
       ativo: normalizarAtivo(ativo),
+      updatedAt: new Date(),
     },
     {
       where: {
@@ -444,11 +475,14 @@ async function reservarProduto(produtoId, sessionId, quantidade) {
         Number(reservaExistente.quantidade) + quantidade;
 
       reservaExistente.expiraEm = dataExpiracaoCarrinho();
+      reservaExistente.updatedAt = new Date();
 
       await reservaExistente.save({
         transaction,
       });
     } else {
+      const agora = new Date();
+
       await CarrinhoReservaModel.create(
         {
           produto_id: produtoId,
@@ -456,6 +490,8 @@ async function reservarProduto(produtoId, sessionId, quantidade) {
           quantidade,
           status: "ativa",
           expiraEm: dataExpiracaoCarrinho(),
+          createdAt: agora,
+          updatedAt: agora,
         },
         {
           transaction,
@@ -501,7 +537,7 @@ async function listarReservasAtivasPorSessao(sessionId) {
         required: true,
       },
     ],
-    order: [["created_at", "DESC"]],
+    order: [["createdAt", "DESC"]],
   });
 
   return reservas.map((reserva) => {
@@ -530,6 +566,7 @@ async function cancelarReservaProduto(produtoId, sessionId) {
   await CarrinhoReservaModel.update(
     {
       status: "cancelada",
+      updatedAt: new Date(),
     },
     {
       where: {
@@ -546,6 +583,7 @@ async function cancelarReservasDaSessao(sessionId) {
   await CarrinhoReservaModel.update(
     {
       status: "cancelada",
+      updatedAt: new Date(),
     },
     {
       where: {
@@ -597,6 +635,7 @@ async function finalizarReservasDaSessao(sessionId) {
       const [afetados] = await ProdutoModel.update(
         {
           quantidade: sequelize.literal(`quantidade - ${quantidade}`),
+          updatedAt: new Date(),
         },
         {
           where: {
@@ -622,6 +661,7 @@ async function finalizarReservasDaSessao(sessionId) {
     await CarrinhoReservaModel.update(
       {
         status: "finalizada",
+        updatedAt: new Date(),
       },
       {
         where: {
